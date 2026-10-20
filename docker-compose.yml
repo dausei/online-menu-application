@@ -1,0 +1,62 @@
+name: online-menu
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: online-menu-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-online_menu}
+      POSTGRES_USER: ${POSTGRES_USER:-menu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-menu}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${DB_EXTERNAL_PORT:-5433}:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    image: online-menu-api:latest
+    container_name: online-menu-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy                     # wait until Postgres accepts connections
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-online_menu}
+      DB_USERNAME: ${POSTGRES_USER:-menu}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-menu}
+      STORAGE_LOCAL_ROOT: /data/media
+      UPLOAD_MAX_FILE_SIZE: ${UPLOAD_MAX_FILE_SIZE:-5MB}
+      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75}
+    volumes:
+      - media-data:/data/media                         # uploaded food images (named volume)
+    ports:
+      - "${API_PORT:-8080}:8080"
+    networks:
+      - backend
+
+  # Planned services:
+  # web:    public menu frontend   (apps/web)
+  # admin:  admin panel frontend   (apps/admin)
+  # minio:  S3-compatible object storage — replaces the media-data volume later
+
+networks:
+  backend:
+    name: online-menu-backend
+    driver: bridge
+
+volumes:
+  postgres-data:
+    name: online-menu-postgres-data
+  media-data:
+    name: online-menu-media-data

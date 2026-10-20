@@ -1,0 +1,21 @@
+# Environment
+.env
+
+# Java / Maven
+target/
+*.class
+*.log
+
+# Local uploads when running the API outside Docker
+apps/api/data/
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Node (future frontends)
+node_modules/
+dist/
+.next/
